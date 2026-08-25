@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f4f1e8" />
+    <meta name="description" content="在浏览器本地将训练集与评测集 Excel 清洗为多轮对话 JSONL。" />
+    <meta property="og:title" content="多轮 JSONL 转换器" />
+    <meta property="og:description" content="Excel 清洗 · 本地转换 · 隐私安全" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://bbbinlei.github.io/multi-turn-json-converter/" />
+    <meta property="og:image" content="https://bbbinlei.github.io/multi-turn-json-converter/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="多轮 JSONL 转换器" />
+    <meta name="twitter:description" content="Excel 清洗 · 本地转换 · 隐私安全" />
+    <meta name="twitter:image" content="https://bbbinlei.github.io/multi-turn-json-converter/og.png" />
+    <title>多轮 JSONL 转换器</title>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <div class="eyebrow"><span class="privacy-dot"></span>文件只在你的浏览器里处理</div>
+        <h1>把 Excel 变成<br /><em>干净的多轮 JSONL</em></h1>
+        <p>自动剔除分类、评分、来源等多余信息，保留可直接用于训练和评测的对话。</p>
+      </header>
+
+      <section class="prompt-panel" aria-labelledby="prompt-title">
+        <div>
+          <span class="step">01</span>
+          <h2 id="prompt-title">设置角色</h2>
+        </div>
+        <label for="system-prompt">System 提示词</label>
+        <textarea id="system-prompt" rows="2">你是一名女性虚拟女友。</textarea>
+      </section>
+
+      <section class="upload-section" aria-labelledby="upload-title">
+        <div class="section-heading">
+          <div><span class="step">02</span><h2 id="upload-title">选择文件</h2></div>
+          <p>支持单独转换，也可以同时选择两份文件。</p>
+        </div>
+        <div class="upload-grid">
+          <article class="dataset-card train-card drop-zone" data-kind="train">
+            <div class="card-index">A</div>
+            <div>
+              <p class="card-kicker">训练数据</p>
+              <h3>训练集.xlsx</h3>
+              <p>读取“第 N 轮用户 / AI 回答”列</p>
+            </div>
+            <label class="file-button" for="train-file">选择训练集</label>
+            <input id="train-file" type="file" accept=".xlsx" />
+            <p class="file-status" id="train-file-status" aria-live="polite">尚未选择文件</p>
+          </article>
+          <article class="dataset-card eval-card drop-zone" data-kind="eval">
+            <div class="card-index">B</div>
+            <div>
+              <p class="card-kicker">评测数据</p>
+              <h3>评测集.xlsx</h3>
+              <p>解析“用户 / 女友”历史并追加参考答案</p>
+            </div>
+            <label class="file-button" for="eval-file">选择评测集</label>
+            <input id="eval-file" type="file" accept=".xlsx" />
+            <p class="file-status" id="eval-file-status" aria-live="polite">尚未选择文件</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="convert-section" aria-labelledby="convert-title">
+        <div><span class="step">03</span><h2 id="convert-title">清洗并转换</h2></div>
+        <div>
+          <p>仅保留 <code>messages</code> 与 <code>thinking</code>，转换成功后分别下载。</p>
+          <button id="convert-button" class="convert-button" type="button" disabled>开始转换</button>
+        </div>
+      </section>
+
+      <section id="results" class="results" aria-label="转换结果" aria-live="polite">
+        <article id="train-result" class="result-panel" hidden></article>
+        <article id="eval-result" class="result-panel" hidden></article>
+      </section>
+
+      <footer>
+        <span>本地处理 · 不上传 · 不保存</span>
+        <span>输出 UTF-8 JSONL</span>
+      </footer>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

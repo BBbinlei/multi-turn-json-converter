@@ -1,0 +1,32 @@
+# Dependencies and builds
+node_modules/
+dist/
+
+# Source datasets and generated training data
+*.xlsx
+*.xls
+*.jsonl
+
+# Local configuration and sensitive files
+.env
+.env.*
+*.pem
+*.key
+*secret*
+*credential*
+*token*
+
+# Codex working folders
+work/
+outputs/
+
+# macOS and editors
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
