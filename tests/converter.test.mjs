@@ -25,8 +25,10 @@ for (const turnCount of [2, 3, 4]) {
     assert.deepEqual(result.errors, []);
     assert.equal(result.records.length, 1);
     assert.equal(result.records[0].messages.length, 1 + turnCount * 2);
-    assert.deepEqual(Object.keys(result.records[0]), ["messages", "thinking"]);
-    assert.equal(result.records[0].messages.at(-1).loss_weight, 1.0);
+    assert.deepEqual(Object.keys(result.records[0]), ["messages"]);
+    assert.equal(result.records[0].messages.every(({ content }) => typeof content === "string"), true);
+    assert.equal(JSON.stringify(result.records[0]).includes("loss_weight"), false);
+    assert.equal(JSON.stringify(result.records[0]).includes("thinking"), false);
     assert.equal(JSON.stringify(result.records[0]).includes("核心维度"), false);
     assert.equal(JSON.stringify(result.records[0]).includes("GF-TEST"), false);
   });
@@ -44,7 +46,7 @@ test("评测集解析角色、续行并追加参考答案", () => {
   assert.equal(result.records.length, 1);
   assert.equal(result.records[0].messages[2].content, "第一答\n续行内容");
   assert.equal(result.records[0].messages.at(-1).content, "最终参考回答");
-  assert.equal(result.records[0].messages.at(-1).loss_weight, 1.0);
+  assert.equal(result.records[0].messages.every(({ content }) => typeof content === "string"), true);
   assert.equal(JSON.stringify(result.records[0]).includes("主评分维度"), false);
 });
 

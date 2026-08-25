@@ -20,25 +20,19 @@ export const hasTrainingHeader = (rows) => Boolean(findHeader(rows, TRAIN_REQUIR
 export const hasEvaluationHeader = (rows) => Boolean(findHeader(rows, EVAL_REQUIRED));
 
 function systemMessage(systemPrompt) {
-  return {
-    role: "system",
-    content: [{ type: "text", text: systemPrompt }],
-  };
+  return { role: "system", content: systemPrompt };
 }
 
 function userMessage(content) {
-  return {
-    role: "user",
-    content: [{ type: "text", text: content }],
-  };
+  return { role: "user", content };
 }
 
 function assistantMessage(content) {
-  return { role: "assistant", content, loss_weight: 1.0 };
+  return { role: "assistant", content };
 }
 
 function record(messages) {
-  return { messages, thinking: { type: "disabled" } };
+  return { messages };
 }
 
 function issue(row, message) {

@@ -35,11 +35,12 @@ function verifyRecords(result, expected, label) {
   assert.equal(lines.length, expected, `${label} JSONL 行数不正确`);
   for (const [index, line] of lines.entries()) {
     const item = JSON.parse(line);
-    assert.deepEqual(Object.keys(item), ["messages", "thinking"], `${label} 第 ${index + 1} 条包含多余顶层字段`);
+    assert.deepEqual(Object.keys(item), ["messages"], `${label} 第 ${index + 1} 条包含多余顶层字段`);
     assert.equal(item.messages[0].role, "system");
     assert.equal(item.messages.at(-1).role, "assistant");
     for (const message of item.messages) {
-      if (message.role === "assistant") assert.equal(message.loss_weight, 1.0);
+      assert.equal(typeof message.content, "string", `${label} 第 ${index + 1} 条存在非字符串 content`);
+      assert.deepEqual(Object.keys(message), ["role", "content"], `${label} 第 ${index + 1} 条消息包含多余字段`);
     }
   }
 }
