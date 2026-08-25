@@ -1,8 +1,14 @@
 const TRAIN_REQUIRED = ["样本ID", "用户轮数", "第1轮用户", "第1轮AI回答"];
 const EVAL_REQUIRED = ["样本ID", "用户轮数", "待测多轮输入", "参考答案（评测后查看）"];
+const ALIBAILIAN_FORMAT = "bailian";
+const VOLCANO_FORMAT = "volcano";
 
 const text = (value) => String(value ?? "").trim();
 const hasValue = (value) => text(value) !== "";
+const emptyRecords = () => ({
+  [ALIBAILIAN_FORMAT]: [],
+  [VOLCANO_FORMAT]: [],
+});
 
 function headerMap(row) {
   return new Map(row.map((cell, index) => [text(cell), index]).filter(([name]) => name));
@@ -31,7 +37,22 @@ function assistantMessage(content) {
   return { role: "assistant", content };
 }
 
-function record(messages) {
+function volcanoMessage(message) {
+  if (message.role === "assistant") {
+    return { role: "assistant", content: message.content, loss_weight: 1.0 };
+  }
+
+  return { role: message.role, content: [{ type: "text", text: message.content }] };
+}
+
+function volcanoRecord(messages) {
+  return {
+    messages: messages.map(volcanoMessage),
+    thinking: { type: "disabled" },
+  };
+}
+
+function bailianRecord(messages) {
   return { messages };
 }
 
@@ -48,8 +69,8 @@ function nonEmptyDataRows(rows, headerIndex) {
 export function convertTrainingRows(rows, rawSystemPrompt) {
   const systemPrompt = text(rawSystemPrompt);
   const header = findHeader(rows, TRAIN_REQUIRED);
-  if (!header) return { records: [], errors: [issue(null, `缺少训练集必需列：${TRAIN_REQUIRED.join("、")}`)] };
-  if (!systemPrompt) return { records: [], errors: [issue(null, "System 提示词不能为空")] };
+  if (!header) return { records: emptyRecords(), errors: [issue(null, `缺少训练集必需列：${TRAIN_REQUIRED.join("、")}`)] };
+  if (!systemPrompt) return { records: emptyRecords(), errors: [issue(null, "System 提示词不能为空")] };
 
   const turns = new Map();
   for (const [name, index] of header.columns) {
@@ -63,9 +84,9 @@ export function convertTrainingRows(rows, rawSystemPrompt) {
   const headerErrors = orderedTurns
     .filter(([, columns]) => columns.user === undefined || columns.assistant === undefined)
     .map(([turn]) => issue(null, `第 ${turn} 轮缺少用户列或 AI 回答列`));
-  if (headerErrors.length) return { records: [], errors: headerErrors };
+  if (headerErrors.length) return { records: emptyRecords(), errors: headerErrors };
 
-  const records = [];
+  const records = emptyRecords();
   const errors = [];
   const idColumn = header.columns.get("样本ID");
   const countColumn = header.columns.get("用户轮数");
@@ -105,7 +126,8 @@ export function convertTrainingRows(rows, rawSystemPrompt) {
     for (const { user, assistant } of populated) {
       messages.push(userMessage(user), assistantMessage(assistant));
     }
-    records.push(record(messages));
+    records[ALIBAILIAN_FORMAT].push(bailianRecord(messages));
+    records[VOLCANO_FORMAT].push(volcanoRecord(messages));
   }
 
   return { records, errors };
@@ -145,10 +167,10 @@ export function parseEvaluationTranscript(rawTranscript) {
 export function convertEvaluationRows(rows, rawSystemPrompt) {
   const systemPrompt = text(rawSystemPrompt);
   const header = findHeader(rows, EVAL_REQUIRED);
-  if (!header) return { records: [], errors: [issue(null, `缺少评测集必需列：${EVAL_REQUIRED.join("、")}`)] };
-  if (!systemPrompt) return { records: [], errors: [issue(null, "System 提示词不能为空")] };
+  if (!header) return { records: emptyRecords(), errors: [issue(null, `缺少评测集必需列：${EVAL_REQUIRED.join("、")}`)] };
+  if (!systemPrompt) return { records: emptyRecords(), errors: [issue(null, "System 提示词不能为空")] };
 
-  const records = [];
+  const records = emptyRecords();
   const errors = [];
   const idColumn = header.columns.get("样本ID");
   const countColumn = header.columns.get("用户轮数");
@@ -183,7 +205,8 @@ export function convertEvaluationRows(rows, rawSystemPrompt) {
         ...history.map((message) => message.role === "user" ? userMessage(message.content) : assistantMessage(message.content)),
         assistantMessage(reference),
       ];
-      records.push(record(messages));
+      records[ALIBAILIAN_FORMAT].push(bailianRecord(messages));
+      records[VOLCANO_FORMAT].push(volcanoRecord(messages));
     } catch (error) {
       errors.push(issue(excelRow, error.message));
     }

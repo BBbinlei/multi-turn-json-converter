@@ -8,6 +8,24 @@ import {
 } from "./converter.js";
 import "./style.css";
 
+const RECORD_FORMATS = [
+  {
+    key: "bailian",
+    label: "阿里百炼（文本 SFT ChatML）",
+    filename: (kind) => `${kind}_bailian_multiturn.jsonl`,
+  },
+  {
+    key: "volcano",
+    label: "火山引擎（方舟格式）",
+    filename: (kind) => `${kind}_volcano_multiturn.jsonl`,
+  },
+];
+
+const emptyRecords = () => ({
+  bailian: [],
+  volcano: [],
+});
+
 const systemPrompt = document.querySelector("#system-prompt");
 const convertButton = document.querySelector("#convert-button");
 const state = {
@@ -21,18 +39,20 @@ const config = {
     status: document.querySelector("#train-file-status"),
     panel: document.querySelector("#train-result"),
     title: "训练集",
-    output: "training_multiturn.jsonl",
+    output: "training",
     hasHeader: hasTrainingHeader,
     convert: convertTrainingRows,
+    formats: RECORD_FORMATS,
   },
   eval: {
     input: document.querySelector("#eval-file"),
     status: document.querySelector("#eval-file-status"),
     panel: document.querySelector("#eval-result"),
     title: "评测集",
-    output: "evaluation_multiturn.jsonl",
+    output: "evaluation",
     hasHeader: hasEvaluationHeader,
     convert: convertEvaluationRows,
+    formats: RECORD_FORMATS,
   },
 };
 
@@ -113,6 +133,7 @@ function createElement(tag, className, content) {
 }
 
 function downloadJsonl(filename, records) {
+  if (!records.length) return;
   const blob = new Blob([toJsonl(records)], { type: "application/jsonl;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -120,6 +141,20 @@ function downloadJsonl(filename, records) {
   link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+function renderDownloads(result, options) {
+  const actions = createElement("div", "download-actions");
+  for (const format of options.formats) {
+    const records = result.records?.[format.key] || [];
+    const count = records.length;
+    const button = createElement("button", "download-button", `下载 ${format.label}`);
+    button.type = "button";
+    button.disabled = !count;
+    button.addEventListener("click", () => downloadJsonl(format.filename(options.output), records));
+    actions.append(button);
+  }
+  return actions;
 }
 
 function renderResult(kind, result) {
@@ -146,13 +181,14 @@ function renderResult(kind, result) {
     return;
   }
 
-  heading.append(createElement("span", "count-badge", `${result.records.length} 条`));
-  const summary = createElement("p", "result-summary", "多余字段已剔除，文件可直接下载。下方预览第 1 条记录。" );
-  const preview = createElement("pre", "json-preview", JSON.stringify(result.records[0], null, 2));
-  const download = createElement("button", "download-button", `下载 ${options.output}`);
-  download.type = "button";
-  download.addEventListener("click", () => downloadJsonl(options.output, result.records));
-  panel.append(heading, summary, preview, download);
+  const firstFormat = options.formats[0]?.key || "bailian";
+  const count = result.records?.[firstFormat]?.length || 0;
+  heading.append(createElement("span", "count-badge", `${count} 条`));
+  const summary = createElement("p", "result-summary", "两套结果共存：阿里百炼文本 SFT 与火山引擎方舟格式。下方预览默认展示阿里百炼第一条。");
+  const previewRecord = result.records?.[firstFormat]?.[0];
+  const preview = createElement("pre", "json-preview", JSON.stringify(previewRecord, null, 2));
+  const actions = renderDownloads(result, options);
+  panel.append(heading, summary, preview, actions);
 }
 
 async function convertOne(kind) {
@@ -164,7 +200,7 @@ async function convertOne(kind) {
     const rows = workbookRows(workbook, options.hasHeader);
     current.result = options.convert(rows, systemPrompt.value);
   } catch (error) {
-    current.result = { records: [], errors: [{ row: null, message: `无法读取文件：${error.message}` }] };
+    current.result = { records: emptyRecords(), errors: [{ row: null, message: `无法读取文件：${error.message}` }] };
   }
   renderResult(kind, current.result);
 }

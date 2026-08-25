@@ -19,18 +19,43 @@ function trainingRows(turnCount) {
   return [["标题"], [], header, data];
 }
 
+function volcanoUserOrSystemContent(record) {
+  return record.messages.every((message) => {
+    if (message.role === "assistant") {
+      return typeof message.content === "string";
+    }
+
+    return Array.isArray(message.content) && message.content[0].type === "text";
+  });
+}
+
 for (const turnCount of [2, 3, 4]) {
   test(`训练集正确转换 ${turnCount} 轮对话`, () => {
     const result = convertTrainingRows(trainingRows(turnCount), prompt);
     assert.deepEqual(result.errors, []);
-    assert.equal(result.records.length, 1);
-    assert.equal(result.records[0].messages.length, 1 + turnCount * 2);
-    assert.deepEqual(Object.keys(result.records[0]), ["messages"]);
-    assert.equal(result.records[0].messages.every(({ content }) => typeof content === "string"), true);
-    assert.equal(JSON.stringify(result.records[0]).includes("loss_weight"), false);
-    assert.equal(JSON.stringify(result.records[0]).includes("thinking"), false);
-    assert.equal(JSON.stringify(result.records[0]).includes("核心维度"), false);
-    assert.equal(JSON.stringify(result.records[0]).includes("GF-TEST"), false);
+
+    const bailian = result.records.bailian;
+    const volcano = result.records.volcano;
+    assert.equal(bailian.length, 1);
+    assert.equal(volcano.length, 1);
+    assert.equal(bailian[0].messages.length, 1 + turnCount * 2);
+    assert.equal(volcano[0].messages.length, 1 + turnCount * 2);
+
+    assert.deepEqual(Object.keys(bailian[0]), ["messages"]);
+    assert.deepEqual(Object.keys(volcano[0]).sort(), ["messages", "thinking"].sort());
+    assert.equal(volcano[0].thinking.type, "disabled");
+    assert.equal(volcanoUserOrSystemContent(volcano[0]), true);
+    assert.equal(typeof volcano[0].messages.find(({ role }) => role === "assistant").content, "string");
+
+    assert.equal(bailian[0].messages.every(({ content }) => typeof content === "string"), true);
+    assert.equal(
+      volcano[0].messages.some((message) => message.role === "assistant" && message.loss_weight === 1.0),
+      true,
+    );
+
+    const text = JSON.stringify(result.records);
+    assert.equal(text.includes("核心维度"), false);
+    assert.equal(text.includes("GF-TEST"), false);
   });
 }
 
@@ -43,11 +68,17 @@ test("评测集解析角色、续行并追加参考答案", () => {
   ];
   const result = convertEvaluationRows(rows, prompt);
   assert.deepEqual(result.errors, []);
-  assert.equal(result.records.length, 1);
-  assert.equal(result.records[0].messages[2].content, "第一答\n续行内容");
-  assert.equal(result.records[0].messages.at(-1).content, "最终参考回答");
-  assert.equal(result.records[0].messages.every(({ content }) => typeof content === "string"), true);
-  assert.equal(JSON.stringify(result.records[0]).includes("主评分维度"), false);
+
+  const record = result.records.bailian[0];
+  const recordVolcano = result.records.volcano[0];
+  assert.equal(record.messages[2].content, "第一答\n续行内容");
+  assert.equal(record.messages.at(-1).content, "最终参考回答");
+  assert.equal(record.messages.every(({ content }) => typeof content === "string"), true);
+
+  assert.equal(recordVolcano.messages[2].content, "第一答\n续行内容");
+  assert.equal(recordVolcano.messages.at(-1).content, "最终参考回答");
+  assert.equal(recordVolcano.messages[0].role, "system");
+  assert.equal(JSON.stringify(recordVolcano).includes("主评分维度"), false);
 });
 
 test("轮数不一致时阻止训练集输出", () => {
@@ -55,7 +86,8 @@ test("轮数不一致时阻止训练集输出", () => {
   rows[3][2] = "3";
   const result = convertTrainingRows(rows, prompt);
   assert.equal(result.errors.length, 1);
-  assert.equal(result.records.length, 0);
+  assert.equal(result.records.bailian.length, 0);
+  assert.equal(result.records.volcano.length, 0);
   assert.match(result.errors[0].message, /声明 3 轮/);
 });
 
@@ -67,7 +99,7 @@ test("评测角色不交替时给出错误", () => {
 });
 
 test("JSONL 每条记录独占一行并保留结尾换行", () => {
-  const records = convertTrainingRows(trainingRows(2), prompt).records;
+  const records = convertTrainingRows(trainingRows(2), prompt).records.bailian;
   const jsonl = toJsonl([...records, ...records]);
   const lines = jsonl.trimEnd().split("\n");
   assert.equal(lines.length, 2);
