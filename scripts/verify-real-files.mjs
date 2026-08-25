@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { read, utils } from "xlsx";
+import { read, utils, write } from "xlsx";
 import {
   convertEvaluationRows,
   convertTrainingRows,
@@ -36,6 +36,13 @@ function ensureBailianRecord(item) {
     assert.equal(typeof message.content, "string");
     assert.deepEqual(Object.keys(message), ["role", "content"]);
   }
+}
+
+function ensureBailianEvaluationRecord(item) {
+  assert.deepEqual(Object.keys(item), ["Prompt", "Completion"]);
+  assert.equal(typeof item.Prompt, "string");
+  assert.equal(typeof item.Completion, "string");
+  assert.match(item.Prompt, /^用户[：:]/);
 }
 
 function ensureVolcanoRecord(item) {
@@ -83,7 +90,7 @@ function ensureModelartsRecord(item) {
   }
 }
 
-function verifyRecords(result, expected, label) {
+function verifyRecords(result, expected, label, evaluation = false) {
   assert.deepEqual(result.errors, [], `${label} 存在转换错误：${JSON.stringify(result.errors)}`);
 
   assert.equal(result.records.bailian.length, expected, `${label} 阿里百炼条数不正确`);
@@ -93,17 +100,28 @@ function verifyRecords(result, expected, label) {
   assert.equal(result.records.modelarts.length, expected, `${label} ModelArts 条数不正确`);
 
   for (let index = 0; index < expected; index += 1) {
-    ensureBailianRecord(result.records.bailian[index]);
+    (evaluation ? ensureBailianEvaluationRecord : ensureBailianRecord)(result.records.bailian[index]);
     ensureVolcanoRecord(result.records.volcano[index]);
     ensureQianfanRecord(result.records.qianfan[index]);
-    assert.deepEqual(result.records.tencent[index], result.records.bailian[index]);
+    if (evaluation) ensureBailianRecord(result.records.tencent[index]);
+    else assert.deepEqual(result.records.tencent[index], result.records.bailian[index]);
     ensureModelartsRecord(result.records.modelarts[index]);
   }
 
-  for (const records of Object.values(result.records)) {
+  for (const [format, records] of Object.entries(result.records)) {
+    if (evaluation && format === "bailian") continue;
     const lines = toJsonl(records).trimEnd().split("\n");
     assert.equal(lines.length, expected);
     assert.doesNotThrow(() => lines.forEach(JSON.parse));
+  }
+
+  if (evaluation) {
+    const workbook = utils.book_new();
+    utils.book_append_sheet(workbook, utils.json_to_sheet(result.records.bailian, { header: ["Prompt", "Completion"] }), "Sheet1");
+    const saved = read(write(workbook, { type: "array", bookType: "xlsx" }));
+    const rows = utils.sheet_to_json(saved.Sheets.Sheet1, { header: 1 });
+    assert.deepEqual(rows[0], ["Prompt", "Completion"]);
+    assert.equal(rows.length, expected + 1);
   }
 }
 
@@ -111,7 +129,7 @@ const training = convertTrainingRows(rowsFromWorkbook(trainingPath, hasTrainingH
 const evaluation = convertEvaluationRows(rowsFromWorkbook(evaluationPath, hasEvaluationHeader), "你是一名女性虚拟女友。");
 
 verifyRecords(training, 255, "训练集");
-verifyRecords(evaluation, 45, "评测集");
+verifyRecords(evaluation, 45, "评测集", true);
 console.log(JSON.stringify({
   training: training.records.bailian.length,
   evaluation: evaluation.records.bailian.length,

@@ -1,6 +1,6 @@
-# 多轮 JSONL 转换器
+# 多轮数据转换器
 
-在浏览器本地将指定格式的训练集和评测集 Excel 清洗为多轮对话 JSONL。文件不会上传到服务器，也不会被保存。
+在浏览器本地将指定格式的训练集和评测集 Excel 清洗为各平台要求的多轮数据文件。文件不会上传到服务器，也不会被保存。
 
 ## 支持的表格
 
@@ -25,13 +25,13 @@
 
 评测集下载为：
 
-- 阿里百炼：`evaluation_bailian_multiturn.jsonl`
+- 阿里百炼：`evaluation_bailian.xlsx`，仅包含 `Prompt`、`Completion` 两列
 - 火山引擎（方舟格式）：`evaluation_volcano_multiturn.jsonl`
 - 百度千帆：`evaluation_qianfan_multiturn.jsonl`
 - 腾讯云：`evaluation_tencent_multiturn.jsonl`
 - 华为云 ModelArts：`evaluation_modelarts_sharegpt_multiturn.jsonl`
 
-评测集 JSONL 是本工具按多轮对话结构生成的转换文件；百炼控制台原生评测集上传格式仍为 xlsx。
+百炼评测集的 `Prompt` 保留清洗后的完整多轮输入，`Completion` 使用参考答案；其他平台的评测结果仍为 JSONL。
 
 ## 本地运行
 

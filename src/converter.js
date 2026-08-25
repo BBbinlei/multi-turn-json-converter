@@ -85,9 +85,9 @@ function modelartsRecord(messages) {
   };
 }
 
-function appendRecords(records, messages) {
+function appendRecords(records, messages, bailian = bailianRecord(messages)) {
   const chatml = bailianRecord(messages);
-  records[ALIBAILIAN_FORMAT].push(chatml);
+  records[ALIBAILIAN_FORMAT].push(bailian);
   records[VOLCANO_FORMAT].push(volcanoRecord(messages));
   records[QIANFAN_FORMAT].push(qianfanRecord(messages));
   records[TENCENT_FORMAT].push(chatml);
@@ -242,7 +242,10 @@ export function convertEvaluationRows(rows, rawSystemPrompt) {
         ...history.map((message) => message.role === "user" ? userMessage(message.content) : assistantMessage(message.content)),
         assistantMessage(reference),
       ];
-      appendRecords(records, messages);
+      appendRecords(records, messages, {
+        Prompt: text(row[transcriptColumn]),
+        Completion: reference,
+      });
     } catch (error) {
       errors.push(issue(excelRow, error.message));
     }

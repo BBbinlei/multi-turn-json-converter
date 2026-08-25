@@ -83,9 +83,10 @@ test("评测集解析角色、续行并追加参考答案", () => {
 
   const record = result.records.bailian[0];
   const recordVolcano = result.records.volcano[0];
-  assert.equal(record.messages[2].content, "第一答\n续行内容");
-  assert.equal(record.messages.at(-1).content, "最终参考回答");
-  assert.equal(record.messages.every(({ content }) => typeof content === "string"), true);
+  assert.deepEqual(record, {
+    Prompt: "用户：第一问\n女友：第一答\n续行内容\n用户：第二问",
+    Completion: "最终参考回答",
+  });
 
   assert.equal(recordVolcano.messages[2].content, "第一答\n续行内容");
   assert.equal(recordVolcano.messages.at(-1).content, "最终参考回答");
@@ -93,7 +94,8 @@ test("评测集解析角色、续行并追加参考答案", () => {
   assert.equal(JSON.stringify(recordVolcano).includes("主评分维度"), false);
 
   assert.equal(result.records.qianfan[0].at(-1).response, "最终参考回答");
-  assert.deepEqual(result.records.tencent[0], record);
+  assert.equal(result.records.tencent[0].messages[2].content, "第一答\n续行内容");
+  assert.equal(result.records.tencent[0].messages.at(-1).content, "最终参考回答");
   assert.equal(result.records.modelarts[0].conversations.at(-1).value, "最终参考回答");
 });
 

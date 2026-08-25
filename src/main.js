@@ -1,4 +1,4 @@
-import { read, utils } from "xlsx";
+import { read, utils, write } from "xlsx";
 import {
   convertEvaluationRows,
   convertTrainingRows,
@@ -12,7 +12,7 @@ const RECORD_FORMATS = [
   {
     key: "bailian",
     label: "阿里百炼（文本 SFT ChatML）",
-    filename: (kind) => `${kind}_bailian_multiturn.jsonl`,
+    filename: (kind) => kind === "evaluation" ? "evaluation_bailian.xlsx" : "training_bailian_multiturn.jsonl",
   },
   {
     key: "volcano",
@@ -150,9 +150,7 @@ function createElement(tag, className, content) {
   return element;
 }
 
-function downloadJsonl(filename, records) {
-  if (!records.length) return;
-  const blob = new Blob([toJsonl(records)], { type: "application/jsonl;charset=utf-8" });
+function download(filename, blob) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -161,15 +159,32 @@ function downloadJsonl(filename, records) {
   URL.revokeObjectURL(url);
 }
 
+function downloadJsonl(filename, records) {
+  if (!records.length) return;
+  download(filename, new Blob([toJsonl(records)], { type: "application/jsonl;charset=utf-8" }));
+}
+
+function downloadBailianEvaluation(filename, records) {
+  const workbook = utils.book_new();
+  utils.book_append_sheet(workbook, utils.json_to_sheet(records, { header: ["Prompt", "Completion"] }), "Sheet1");
+  download(filename, new Blob([write(workbook, { type: "array", bookType: "xlsx" })], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  }));
+}
+
 function renderDownloads(result, options) {
   const actions = createElement("div", "download-actions");
   for (const format of options.formats) {
     const records = result.records?.[format.key] || [];
     const count = records.length;
-    const button = createElement("button", "download-button", `下载 ${format.label}`);
+    const bailianEvaluation = format.key === "bailian" && options.output === "evaluation";
+    const label = bailianEvaluation ? "阿里百炼（Prompt / Completion）Excel" : format.label;
+    const button = createElement("button", "download-button", `下载 ${label}`);
     button.type = "button";
     button.disabled = !count;
-    button.addEventListener("click", () => downloadJsonl(format.filename(options.output), records));
+    button.addEventListener("click", () => bailianEvaluation
+      ? downloadBailianEvaluation(format.filename(options.output), records)
+      : downloadJsonl(format.filename(options.output), records));
     actions.append(button);
   }
   return actions;
@@ -202,7 +217,9 @@ function renderResult(kind, result) {
   const firstFormat = options.formats[0]?.key || "bailian";
   const count = result.records?.[firstFormat]?.length || 0;
   heading.append(createElement("span", "count-badge", `${count} 条`));
-  const summary = createElement("p", "result-summary", "五套结果共存：阿里百炼、火山引擎、百度千帆、腾讯云与华为云 ModelArts。下方预览默认展示阿里百炼第一条。");
+  const summary = createElement("p", "result-summary", kind === "eval"
+    ? "五套结果共存：阿里百炼评测集下载为 Prompt / Completion Excel，其他平台下载为 JSONL。下方预览默认展示阿里百炼第一条。"
+    : "五套结果共存：阿里百炼、火山引擎、百度千帆、腾讯云与华为云 ModelArts。下方预览默认展示阿里百炼第一条。");
   const previewRecord = result.records?.[firstFormat]?.[0];
   const preview = createElement("pre", "json-preview", JSON.stringify(previewRecord, null, 2));
   const actions = renderDownloads(result, options);

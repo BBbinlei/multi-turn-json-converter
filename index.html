@@ -4,23 +4,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f4f1e8" />
-    <meta name="description" content="在浏览器本地将训练集与评测集 Excel 清洗为多轮对话 JSONL。" />
-    <meta property="og:title" content="多轮 JSONL 转换器" />
+    <meta name="description" content="在浏览器本地将训练集与评测集 Excel 清洗为平台所需的多轮数据文件。" />
+    <meta property="og:title" content="多轮数据转换器" />
     <meta property="og:description" content="Excel 清洗 · 本地转换 · 隐私安全" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://bbbinlei.github.io/multi-turn-json-converter/" />
     <meta property="og:image" content="https://bbbinlei.github.io/multi-turn-json-converter/og.png" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="多轮 JSONL 转换器" />
+    <meta name="twitter:title" content="多轮数据转换器" />
     <meta name="twitter:description" content="Excel 清洗 · 本地转换 · 隐私安全" />
     <meta name="twitter:image" content="https://bbbinlei.github.io/multi-turn-json-converter/og.png" />
-    <title>多轮 JSONL 转换器</title>
+    <title>多轮数据转换器</title>
   </head>
   <body>
     <main class="shell">
       <header class="hero">
         <div class="eyebrow"><span class="privacy-dot"></span>文件只在你的浏览器里处理</div>
-        <h1>把 Excel 变成<br /><em>干净的多轮 JSONL</em></h1>
+        <h1>把 Excel 变成<br /><em>干净的多轮数据</em></h1>
         <p>自动剔除分类、评分、来源等多余信息，保留可直接用于训练和评测的对话。</p>
       </header>
 
@@ -166,7 +166,7 @@
             <div>
               <p class="card-kicker">评测数据</p>
               <h3>评测集.xlsx</h3>
-              <p>解析“用户 / 女友”历史并追加参考答案；百炼原生评测上传仍需 xlsx</p>
+              <p>解析“用户 / 女友”历史并追加参考答案；百炼按 Prompt / Completion 导出 xlsx</p>
             </div>
             <label class="file-button" for="eval-file">选择评测集</label>
             <input id="eval-file" type="file" accept=".xlsx" />
@@ -178,7 +178,7 @@
       <section class="convert-section" aria-labelledby="convert-title">
         <div><span class="step">03</span><h2 id="convert-title">清洗并转换</h2></div>
         <div>
-          <p>按五套 SFT 规范并行转换：阿里百炼、火山引擎、百度千帆、腾讯云与华为云 ModelArts，先做清洗再下载对应格式。</p>
+          <p>按五个平台规范并行转换：百炼评测集导出 Excel，其余结果导出 JSONL。</p>
           <button id="convert-button" class="convert-button" type="button" disabled>开始转换</button>
         </div>
       </section>
@@ -190,7 +190,7 @@
 
       <footer>
         <span>本地处理 · 不上传 · 不保存</span>
-        <span>输出 UTF-8 JSONL</span>
+        <span>输出 XLSX / UTF-8 JSONL</span>
       </footer>
     </main>
     <script type="module" src="/src/main.js"></script>
