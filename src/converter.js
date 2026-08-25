@@ -2,12 +2,18 @@ const TRAIN_REQUIRED = ["样本ID", "用户轮数", "第1轮用户", "第1轮AI�
 const EVAL_REQUIRED = ["样本ID", "用户轮数", "待测多轮输入", "参考答案（评测后查看）"];
 const ALIBAILIAN_FORMAT = "bailian";
 const VOLCANO_FORMAT = "volcano";
+const QIANFAN_FORMAT = "qianfan";
+const TENCENT_FORMAT = "tencent";
+const MODELARTS_FORMAT = "modelarts";
 
 const text = (value) => String(value ?? "").trim();
 const hasValue = (value) => text(value) !== "";
 const emptyRecords = () => ({
   [ALIBAILIAN_FORMAT]: [],
   [VOLCANO_FORMAT]: [],
+  [QIANFAN_FORMAT]: [],
+  [TENCENT_FORMAT]: [],
+  [MODELARTS_FORMAT]: [],
 });
 
 function headerMap(row) {
@@ -54,6 +60,38 @@ function volcanoRecord(messages) {
 
 function bailianRecord(messages) {
   return { messages };
+}
+
+function qianfanRecord(messages) {
+  const [system, ...conversation] = messages;
+  const rounds = [];
+  for (let index = 0; index < conversation.length; index += 2) {
+    const pair = {
+      prompt: conversation[index].content,
+      response: conversation[index + 1].content,
+    };
+    rounds.push(index === 0 ? { system: system.content, ...pair } : pair);
+  }
+  return rounds;
+}
+
+function modelartsRecord(messages) {
+  return {
+    system_prompt: messages[0].content,
+    conversations: messages.slice(1).map((message) => ({
+      from: message.role === "user" ? "human" : "gpt",
+      value: message.content,
+    })),
+  };
+}
+
+function appendRecords(records, messages) {
+  const chatml = bailianRecord(messages);
+  records[ALIBAILIAN_FORMAT].push(chatml);
+  records[VOLCANO_FORMAT].push(volcanoRecord(messages));
+  records[QIANFAN_FORMAT].push(qianfanRecord(messages));
+  records[TENCENT_FORMAT].push(chatml);
+  records[MODELARTS_FORMAT].push(modelartsRecord(messages));
 }
 
 function issue(row, message) {
@@ -126,8 +164,7 @@ export function convertTrainingRows(rows, rawSystemPrompt) {
     for (const { user, assistant } of populated) {
       messages.push(userMessage(user), assistantMessage(assistant));
     }
-    records[ALIBAILIAN_FORMAT].push(bailianRecord(messages));
-    records[VOLCANO_FORMAT].push(volcanoRecord(messages));
+    appendRecords(records, messages);
   }
 
   return { records, errors };
@@ -205,8 +242,7 @@ export function convertEvaluationRows(rows, rawSystemPrompt) {
         ...history.map((message) => message.role === "user" ? userMessage(message.content) : assistantMessage(message.content)),
         assistantMessage(reference),
       ];
-      records[ALIBAILIAN_FORMAT].push(bailianRecord(messages));
-      records[VOLCANO_FORMAT].push(volcanoRecord(messages));
+      appendRecords(records, messages);
     } catch (error) {
       errors.push(issue(excelRow, error.message));
     }

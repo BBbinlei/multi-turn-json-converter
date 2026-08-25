@@ -36,8 +36,10 @@ for (const turnCount of [2, 3, 4]) {
 
     const bailian = result.records.bailian;
     const volcano = result.records.volcano;
-    assert.equal(bailian.length, 1);
-    assert.equal(volcano.length, 1);
+    const qianfan = result.records.qianfan;
+    const tencent = result.records.tencent;
+    const modelarts = result.records.modelarts;
+    assert.equal(Object.values(result.records).every((records) => records.length === 1), true);
     assert.equal(bailian[0].messages.length, 1 + turnCount * 2);
     assert.equal(volcano[0].messages.length, 1 + turnCount * 2);
 
@@ -52,6 +54,16 @@ for (const turnCount of [2, 3, 4]) {
       volcano[0].messages.some((message) => message.role === "assistant" && message.loss_weight === 1.0),
       true,
     );
+
+    assert.equal(qianfan[0].length, turnCount);
+    assert.deepEqual(Object.keys(qianfan[0][0]), ["system", "prompt", "response"]);
+    assert.deepEqual(Object.keys(qianfan[0][1]), ["prompt", "response"]);
+    assert.equal(JSON.stringify(qianfan[0]).includes("weight"), false);
+    assert.deepEqual(tencent[0], bailian[0]);
+    assert.deepEqual(Object.keys(modelarts[0]), ["system_prompt", "conversations"]);
+    assert.equal(modelarts[0].conversations.length, turnCount * 2);
+    assert.deepEqual(modelarts[0].conversations[0], { from: "human", value: "用户 1" });
+    assert.deepEqual(modelarts[0].conversations[1], { from: "gpt", value: "回答 1" });
 
     const text = JSON.stringify(result.records);
     assert.equal(text.includes("核心维度"), false);
@@ -79,6 +91,10 @@ test("评测集解析角色、续行并追加参考答案", () => {
   assert.equal(recordVolcano.messages.at(-1).content, "最终参考回答");
   assert.equal(recordVolcano.messages[0].role, "system");
   assert.equal(JSON.stringify(recordVolcano).includes("主评分维度"), false);
+
+  assert.equal(result.records.qianfan[0].at(-1).response, "最终参考回答");
+  assert.deepEqual(result.records.tencent[0], record);
+  assert.equal(result.records.modelarts[0].conversations.at(-1).value, "最终参考回答");
 });
 
 test("轮数不一致时阻止训练集输出", () => {
@@ -86,8 +102,7 @@ test("轮数不一致时阻止训练集输出", () => {
   rows[3][2] = "3";
   const result = convertTrainingRows(rows, prompt);
   assert.equal(result.errors.length, 1);
-  assert.equal(result.records.bailian.length, 0);
-  assert.equal(result.records.volcano.length, 0);
+  assert.equal(Object.values(result.records).every((records) => records.length === 0), true);
   assert.match(result.errors[0].message, /声明 3 轮/);
 });
 
@@ -99,10 +114,12 @@ test("评测角色不交替时给出错误", () => {
 });
 
 test("JSONL 每条记录独占一行并保留结尾换行", () => {
-  const records = convertTrainingRows(trainingRows(2), prompt).records.bailian;
-  const jsonl = toJsonl([...records, ...records]);
-  const lines = jsonl.trimEnd().split("\n");
-  assert.equal(lines.length, 2);
-  assert.doesNotThrow(() => lines.forEach(JSON.parse));
-  assert.equal(jsonl.endsWith("\n"), true);
+  const formats = convertTrainingRows(trainingRows(2), prompt).records;
+  for (const records of Object.values(formats)) {
+    const jsonl = toJsonl([...records, ...records]);
+    const lines = jsonl.trimEnd().split("\n");
+    assert.equal(lines.length, 2);
+    assert.doesNotThrow(() => lines.forEach(JSON.parse));
+    assert.equal(jsonl.endsWith("\n"), true);
+  }
 });

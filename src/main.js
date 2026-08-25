@@ -19,11 +19,29 @@ const RECORD_FORMATS = [
     label: "火山引擎（方舟格式）",
     filename: (kind) => `${kind}_volcano_multiturn.jsonl`,
   },
+  {
+    key: "qianfan",
+    label: "百度千帆（多轮 SFT）",
+    filename: (kind) => `${kind}_qianfan_multiturn.jsonl`,
+  },
+  {
+    key: "tencent",
+    label: "腾讯云（TI-ONE SFT）",
+    filename: (kind) => `${kind}_tencent_multiturn.jsonl`,
+  },
+  {
+    key: "modelarts",
+    label: "华为云 ModelArts（ShareGPT）",
+    filename: (kind) => `${kind}_modelarts_sharegpt_multiturn.jsonl`,
+  },
 ];
 
 const emptyRecords = () => ({
   bailian: [],
   volcano: [],
+  qianfan: [],
+  tencent: [],
+  modelarts: [],
 });
 
 const systemPrompt = document.querySelector("#system-prompt");
@@ -184,7 +202,7 @@ function renderResult(kind, result) {
   const firstFormat = options.formats[0]?.key || "bailian";
   const count = result.records?.[firstFormat]?.length || 0;
   heading.append(createElement("span", "count-badge", `${count} 条`));
-  const summary = createElement("p", "result-summary", "两套结果共存：阿里百炼文本 SFT 与火山引擎方舟格式。下方预览默认展示阿里百炼第一条。");
+  const summary = createElement("p", "result-summary", "五套结果共存：阿里百炼、火山引擎、百度千帆、腾讯云与华为云 ModelArts。下方预览默认展示阿里百炼第一条。");
   const previewRecord = result.records?.[firstFormat]?.[0];
   const preview = createElement("pre", "json-preview", JSON.stringify(previewRecord, null, 2));
   const actions = renderDownloads(result, options);

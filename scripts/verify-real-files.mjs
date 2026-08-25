@@ -6,6 +6,7 @@ import {
   convertTrainingRows,
   hasEvaluationHeader,
   hasTrainingHeader,
+  toJsonl,
 } from "../src/converter.js";
 
 const [trainingPath, evaluationPath] = process.argv.slice(2);
@@ -59,19 +60,50 @@ function ensureVolcanoRecord(item) {
   }
 }
 
+function ensureQianfanRecord(item) {
+  assert.equal(Array.isArray(item), true);
+  assert.equal(item.length > 0, true);
+  assert.deepEqual(Object.keys(item[0]), ["system", "prompt", "response"]);
+  for (const [index, round] of item.entries()) {
+    if (index > 0) assert.deepEqual(Object.keys(round), ["prompt", "response"]);
+    assert.equal(typeof round.prompt, "string");
+    assert.equal(typeof round.response, "string");
+    assert.equal("weight" in round, false);
+  }
+}
+
+function ensureModelartsRecord(item) {
+  assert.deepEqual(Object.keys(item), ["system_prompt", "conversations"]);
+  assert.equal(typeof item.system_prompt, "string");
+  assert.equal(item.conversations.at(-1).from, "gpt");
+  for (const [index, message] of item.conversations.entries()) {
+    assert.deepEqual(Object.keys(message), ["from", "value"]);
+    assert.equal(message.from, index % 2 === 0 ? "human" : "gpt");
+    assert.equal(typeof message.value, "string");
+  }
+}
+
 function verifyRecords(result, expected, label) {
   assert.deepEqual(result.errors, [], `${label} 存在转换错误：${JSON.stringify(result.errors)}`);
 
   assert.equal(result.records.bailian.length, expected, `${label} 阿里百炼条数不正确`);
   assert.equal(result.records.volcano.length, expected, `${label} 火山方舟条数不正确`);
-
-  const bailianLines = result.records.bailian;
-  const volcanoLines = result.records.volcano;
-  assert.equal(bailianLines.length, volcanoLines.length);
+  assert.equal(result.records.qianfan.length, expected, `${label} 百度千帆条数不正确`);
+  assert.equal(result.records.tencent.length, expected, `${label} 腾讯云条数不正确`);
+  assert.equal(result.records.modelarts.length, expected, `${label} ModelArts 条数不正确`);
 
   for (let index = 0; index < expected; index += 1) {
-    ensureBailianRecord(bailianLines[index]);
-    ensureVolcanoRecord(volcanoLines[index]);
+    ensureBailianRecord(result.records.bailian[index]);
+    ensureVolcanoRecord(result.records.volcano[index]);
+    ensureQianfanRecord(result.records.qianfan[index]);
+    assert.deepEqual(result.records.tencent[index], result.records.bailian[index]);
+    ensureModelartsRecord(result.records.modelarts[index]);
+  }
+
+  for (const records of Object.values(result.records)) {
+    const lines = toJsonl(records).trimEnd().split("\n");
+    assert.equal(lines.length, expected);
+    assert.doesNotThrow(() => lines.forEach(JSON.parse));
   }
 }
 
@@ -85,4 +117,10 @@ console.log(JSON.stringify({
   evaluation: evaluation.records.bailian.length,
   trainingVolcano: training.records.volcano.length,
   evaluationVolcano: evaluation.records.volcano.length,
+  trainingQianfan: training.records.qianfan.length,
+  evaluationQianfan: evaluation.records.qianfan.length,
+  trainingTencent: training.records.tencent.length,
+  evaluationTencent: evaluation.records.tencent.length,
+  trainingModelarts: training.records.modelarts.length,
+  evaluationModelarts: evaluation.records.modelarts.length,
 }));
